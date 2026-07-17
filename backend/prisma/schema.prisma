@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String   
+  role             String @default("STUDENT")
+  createdAt    DateTime @default(now())
+
+  student Student?
+}
+
+model Student {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  semesters   Semester[]
+  cgpaRecords CgpaRecord[]
+}
+
+model GradeSystem {
+  id       String @id @default(cuid())
+  name     String // "5.0 Scale"
+  maxPoint Float
+
+  scales    GradeScale[]
+  semesters Semester[]
+}
+
+model GradeScale {
+  id            String      @id @default(cuid())
+  gradeSystemId String
+  gradeSystem   GradeSystem @relation(fields: [gradeSystemId], references: [id], onDelete: Cascade)
+  letter        String
+  point         Float
+
+  @@unique([gradeSystemId, letter])
+}
+
+model Semester {
+  id            String      @id @default(cuid())
+  studentId     String
+  student       Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  gradeSystemId String
+  gradeSystem   GradeSystem @relation(fields: [gradeSystemId], references: [id])
+  session       String      // "2024/2025"
+  term          String      // "Semester 1"
+  locked        Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+  courses   CourseRecord[]
+  gpaRecord GpaRecord?
+
+  @@index([studentId])
+}
+
+model CourseRecord {
+  id           String   @id @default(cuid())
+  semesterId   String
+  semester     Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  code         String
+  title        String
+  unit         Float
+  gradeLetter  String?
+  gradePoint   Float?
+  qualityPoint Float?
+
+  @@index([semesterId])
+}
+
+model GpaRecord {
+  id                 String   @id @default(cuid())
+  semesterId         String   @unique
+  semester           Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  totalUnits         Float
+  totalQualityPoints Float
+  gpa                Float
+  computedAt         DateTime @default(now())
+}
+
+model CgpaRecord {
+  id                 String   @id @default(cuid())
+  studentId          String
+  student            Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  totalUnits         Float
+  totalQualityPoints Float
+  cgpa               Float
+  computedAt         DateTime @default(now())
+
+  @@index([studentId])
+}
